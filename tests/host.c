@@ -134,6 +134,17 @@ static int slot_save(uint32_t i, const void *p, uint32_t n) { return i < NSLOT ?
  * the device's st_read / fl_erase4k / fl_write on a 1 MiB image of erased flash, refused outside FL_RANGE_OK as on the
  * FM-1. DINGHY_FLASH=file keeps the image across runs (loaded at start, written at the end): a power cycle. Kept apart
  * from the RAM settings / blobs / slots above: a module must not mix its raw region with slot_save on the same slot. */
+static void fm1_wdt_feed(void) {}
+static uint32_t crc32(const uint8_t *p, uint32_t n)   /* as platform.c */
+{
+    uint32_t c = 0xFFFFFFFFu, k;
+    while (n--) {
+        c ^= *p++;
+        for (k = 0; k < 8u; k++)
+            c = c & 1u ? (c >> 1) ^ 0xEDB88320u : c >> 1;
+    }
+    return ~c;
+}
 static uint8_t host_flash[1u << 20], host_flash_init, flash_ok = 1;
 static void host_flash_load(void)
 {
