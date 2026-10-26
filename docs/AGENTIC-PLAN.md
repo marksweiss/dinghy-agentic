@@ -46,4 +46,4 @@ which they may license as they like). The FM1 Open kit is fetched by script, not
 7. [x] .claude: CLAUDE.md (coordinator), agents, skills (from TastyWaves' lessons).
 8. [x] Docs: README (what it is, the workflow, quick start), LICENSING (credits: Felucca, SLOOP, Dinghy, TastyWaves,
        M-VAVE for the fetched kit), WORKFLOW, LESSONS, MODULES, TARGETS.
-9. [ ] Publish: archive branch, rename repo, push, check.
+9. [~] Publish: archive branch, rename repo, push, check.

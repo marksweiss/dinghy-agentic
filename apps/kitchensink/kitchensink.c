@@ -181,7 +181,7 @@ static void pic_fn(const void *ctx)             /* the page's picture: what soun
         char t[24], *d = ui_cat(t, "TEMPO ");
         const char *src = c->ext ? "  MIDI CLOCK" : "  INTERNAL";
         int32_t w;
-        d = ui_num(d, (int32_t)c->bpm);
+        d = c->bpm ? ui_num(d, (int32_t)c->bpm) : ui_cat(d, "---");
         ui_cat(d, " BPM");
         w = text_w(&FONT_S, t) + text_w(&FONT_S, src);
         cv_text((240 - w) / 2 + text_w(&FONT_S, t), 98, &FONT_S, src, c->ext ? UI_ACC : UI_GRAY);
@@ -220,9 +220,13 @@ static void app_main(void)
             if (up >> k & 1u) { dsp_ring_put(&ev, (uint32_t)held[k] << 8); midi_send(0x80, held[k], 0); }
         }
         while (midi_get(&st, &d1, &d2)) {
-            if (st == 0xF8u) {                  /* the clock's tempo for the screen: ms over 4 beats (96 ticks), +-0.1 BPM */
+            if (st == 0xF8u) {                  /* the clock's tempo for the screen: ms over 4 beats (96 ticks), +-0.1 BPM, from
+                                                   the second beat on (the first after a start is often short) */
                 arp_ext.ticks++;
-                if (clk_n % 96u == 0u) { if (clk_n) { uint32_t ms = fm1_ms - clk_t0; clk_bpm = ms ? (240000u + ms / 2u) / ms : 0; } clk_t0 = fm1_ms; }
+                if (clk_n >= 24u && (clk_n - 24u) % 96u == 0u) {
+                    if (clk_n > 24u) { uint32_t ms = fm1_ms - clk_t0; clk_bpm = ms ? (240000u + ms / 2u) / ms : 0; }
+                    clk_t0 = fm1_ms;
+                }
                 clk_n++;
             }
             else if (st == 0xFAu) { arp_ext.start++; clk_n = 0; }
@@ -273,9 +277,8 @@ static void app_main(void)
             }
         }
         if (drawn_pic == ~0u) ui_tabs(UI_Y_TABS, PG_NAME, 3, page, 0, 1);
-        {   uint32_t ext = arp_tap.ext, bb = arp_tap.beat_blocks;   /* MIDI clock: the 4-beat ms measure; until there is one, a
-                                                                       beat in audio blocks (5.8 ms each, so +-1 BPM: it flickers) */
-            uint32_t bpm = !ext ? (uint32_t)arp_cfg.bpm : clk_bpm ? clk_bpm : bb ? (10336u + bb / 2u) / bb : (uint32_t)arp_cfg.bpm;
+        {   uint32_t ext = arp_tap.ext;     /* MIDI clock: the 4-beat ms measure (0 until the first: shown as ---) */
+            uint32_t bpm = !ext ? (uint32_t)arp_cfg.bpm : clk_bpm;
             if (!ext) clk_n = 0, clk_bpm = 0;
             pk = voices | (uint32_t)fx_bypass << 8 | arp_enabled << 9 | page << 10 | ext << 12 | bpm << 13;
             if (pk != drawn_pic) { pic_t c = {page, voices, fx_bypass, arp_enabled, bpm, ext}; ui_pic(UI_Y_BODY, UI_BODY_H, pic_fn, &c); drawn_pic = pk; }

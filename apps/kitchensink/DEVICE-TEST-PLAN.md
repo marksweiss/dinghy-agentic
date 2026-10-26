@@ -1,5 +1,7 @@
 # KitchenSink: device test plan
 
+**Passed on an FM-1, 2026-10-26** (all rows).
+
 KitchenSink exercises every firmware/lib module and the platform hooks dinghy-agentic added to Dinghy 0.4; passing it on
 a real FM-1 is what makes the modules safe to build on.
 
@@ -34,7 +36,7 @@ KitchenSink has no sequencer page: arpseq.h's sequencers are checked by the host
 |---|----|--------|
 | 3.1 | Tap ARP, then hold ARP half a second | the tap opens the ARP page (MODE RATE OCT GATE, TEMPO 120 BPM  INTERNAL); the hold lights ARP and the page says HOLD ARP: ON |
 | 3.2 | Hold a chord; turn MODE, RATE, OCT, GATE | the arpeggio follows each change |
-| 3.3 | Send MIDI clock from a DAW and press Start, or run `tools/send_clock.py 100 20` (100 BPM for 20 s, with Start) | the ARP page shows TEMPO 100 BPM  MIDI CLOCK (INTERNAL and 120 when no clock comes); the arp follows the tempo; Start restarts it on the beat |
+| 3.3 | Send MIDI clock from a DAW and press Start, or run `tools/send_clock.py 100 20` (100 BPM for 20 s, with Start) | the ARP page shows TEMPO --- BPM, then within ~3 s TEMPO 100 BPM  MIDI CLOCK, steady (INTERNAL and 120 when no clock comes); the arp follows the tempo; Start restarts it on the beat |
 
 ## 4. Patches (patchlog.h) and the link (link.h)
 
