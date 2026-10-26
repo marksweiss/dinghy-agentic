@@ -31,7 +31,7 @@ Report results by row number.
 |---|----|--------|
 | 3.1 | Hold ARP half a second | ARP lights; the ARP page says HOLD ARP: ON |
 | 3.2 | Hold a chord; turn MODE, RATE, OCT, GATE | the arpeggio follows each change |
-| 3.3 | Send MIDI clock from a DAW and press Start, or run `tools/send_clock.py 100 20` (100 BPM for 20 s, with Start) | the arp follows the tempo; Start restarts it on the beat |
+| 3.3 | Send MIDI clock from a DAW and press Start, or run `tools/send_clock.py 100 20` (100 BPM for 20 s, with Start) | the ARP page shows TEMPO 100 BPM  MIDI CLOCK (INTERNAL and 120 when no clock comes); the arp follows the tempo; Start restarts it on the beat |
 
 ## 4. Patches (patchlog.h) and the link (link.h)
 

@@ -169,7 +169,7 @@ static void val_text(char *d, uint32_t p)
     else if (p == P_RATE) ui_copy(d, RATEN[v], 8);
     else ui_num(d, v);
 }
-typedef struct { uint32_t page, voices, fx_on, arp_on; } pic_t;
+typedef struct { uint32_t page, voices, fx_on, arp_on, bpm, ext; } pic_t;
 static void pic_fn(const void *ctx)             /* the page's picture: what sounds, and the state of the holds */
 {
     const pic_t *c = ctx;
@@ -177,7 +177,17 @@ static void pic_fn(const void *ctx)             /* the page's picture: what soun
     for (v = 0; v < NV; v++) cv_rect(20 + (int32_t)v * 26, 20, 20, 50, c->voices >> v & 1u ? UI_ACC : UI_DIM);
     cv_text(20, 80, &FONT_S, "VOICES", UI_GRAY);
     if (c->page == PG_FX) ui_hold_hint(60, 112, "HOLD FX: ", c->fx_on ? "BYPASS" : "ON", c->fx_on ? UI_WARN : UI_ACC);
-    if (c->page == PG_ARP) ui_hold_hint(60, 112, "HOLD ARP: ", c->arp_on ? "ON" : "OFF", c->arp_on ? UI_ACC : UI_DIM);
+    if (c->page == PG_ARP) {                    /* the tempo the arp runs at: its own, or the incoming MIDI clock's */
+        char t[24], *d = ui_cat(t, "TEMPO ");
+        const char *src = c->ext ? "  MIDI CLOCK" : "  INTERNAL";
+        int32_t w;
+        d = ui_num(d, (int32_t)c->bpm);
+        ui_cat(d, " BPM");
+        w = text_w(&FONT_S, t) + text_w(&FONT_S, src);
+        cv_text((240 - w) / 2 + text_w(&FONT_S, t), 98, &FONT_S, src, c->ext ? UI_ACC : UI_GRAY);
+        cv_text((240 - w) / 2, 98, &FONT_S, t, UI_TXT);
+        ui_hold_hint(60, 118, "HOLD ARP: ", c->arp_on ? "ON" : "OFF", c->arp_on ? UI_ACC : UI_DIM);
+    }
 }
 
 static void app_main(void)
@@ -259,8 +269,11 @@ static void app_main(void)
             }
         }
         if (drawn_pic == ~0u) ui_tabs(UI_Y_TABS, PG_NAME, 3, page, 0, 1);
-        pk = voices | (uint32_t)fx_bypass << 8 | arp_enabled << 9 | page << 10;
-        if (pk != drawn_pic) { pic_t c = {page, voices, fx_bypass, arp_enabled}; ui_pic(UI_Y_BODY, UI_BODY_H, pic_fn, &c); drawn_pic = pk; }
+        {   uint32_t ext = arp_tap.ext, bb = arp_tap.beat_blocks;   /* MIDI clock: blocks per quarter note -> BPM (10336 = blocks a minute) */
+            uint32_t bpm = ext && bb ? (10336u + bb / 2u) / bb : (uint32_t)arp_cfg.bpm;
+            pk = voices | (uint32_t)fx_bypass << 8 | arp_enabled << 9 | page << 10 | ext << 12 | bpm << 13;
+            if (pk != drawn_pic) { pic_t c = {page, voices, fx_bypass, arp_enabled, bpm, ext}; ui_pic(UI_Y_BODY, UI_BODY_H, pic_fn, &c); drawn_pic = pk; }
+        }
         if (fm1_ms - t_status > 250u) {
             uint32_t nv = 0;
             for (k = 0; k < NV; k++) nv += voices >> k & 1u;
