@@ -195,7 +195,7 @@ static void app_main(void)
     uint32_t prev = 0, k, page = PG_HOME, last_page = ~0u, drawn_k[4] = {~0u, ~0u, ~0u, ~0u}, drawn_pic = ~0u, t_status = 0;
     int32_t oct = 0, e;
     uint8_t held[27] = {0};
-    uint32_t touched = 4, clk_seen = 0;
+    uint32_t touched = 4, clk_seen = 0, clk_n = 0, clk_t0 = 0, clk_bpm = 0;
     char name[16] = "INIT", drawn_title[24] = "";
     ui_gesture_t g_fx = {0}, g_arp = {0}, g_home = {0};
     ui_msg_t msg = {{0}, 0};
@@ -220,8 +220,12 @@ static void app_main(void)
             if (up >> k & 1u) { dsp_ring_put(&ev, (uint32_t)held[k] << 8); midi_send(0x80, held[k], 0); }
         }
         while (midi_get(&st, &d1, &d2)) {
-            if (st == 0xF8u) arp_ext.ticks++;
-            else if (st == 0xFAu) arp_ext.start++;
+            if (st == 0xF8u) {                  /* the clock's tempo for the screen: ms over 4 beats (96 ticks), +-0.1 BPM */
+                arp_ext.ticks++;
+                if (clk_n % 96u == 0u) { if (clk_n) { uint32_t ms = fm1_ms - clk_t0; clk_bpm = ms ? (240000u + ms / 2u) / ms : 0; } clk_t0 = fm1_ms; }
+                clk_n++;
+            }
+            else if (st == 0xFAu) { arp_ext.start++; clk_n = 0; }
             else if ((st & 0xF0u) == 0x90u && d2) dsp_ring_put(&ev, 1u << 16 | (uint32_t)d1 << 8 | d2);
             else if ((st & 0xF0u) == 0x80u || (st & 0xF0u) == 0x90u) dsp_ring_put(&ev, (uint32_t)d1 << 8);
         }
@@ -269,8 +273,10 @@ static void app_main(void)
             }
         }
         if (drawn_pic == ~0u) ui_tabs(UI_Y_TABS, PG_NAME, 3, page, 0, 1);
-        {   uint32_t ext = arp_tap.ext, bb = arp_tap.beat_blocks;   /* MIDI clock: blocks per quarter note -> BPM (10336 = blocks a minute) */
-            uint32_t bpm = ext && bb ? (10336u + bb / 2u) / bb : (uint32_t)arp_cfg.bpm;
+        {   uint32_t ext = arp_tap.ext, bb = arp_tap.beat_blocks;   /* MIDI clock: the 4-beat ms measure; until there is one, a
+                                                                       beat in audio blocks (5.8 ms each, so +-1 BPM: it flickers) */
+            uint32_t bpm = !ext ? (uint32_t)arp_cfg.bpm : clk_bpm ? clk_bpm : bb ? (10336u + bb / 2u) / bb : (uint32_t)arp_cfg.bpm;
+            if (!ext) clk_n = 0, clk_bpm = 0;
             pk = voices | (uint32_t)fx_bypass << 8 | arp_enabled << 9 | page << 10 | ext << 12 | bpm << 13;
             if (pk != drawn_pic) { pic_t c = {page, voices, fx_bypass, arp_enabled, bpm, ext}; ui_pic(UI_Y_BODY, UI_BODY_H, pic_fn, &c); drawn_pic = pk; }
         }
