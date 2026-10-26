@@ -83,6 +83,7 @@ static void fm1_led_key_glow(uint32_t id, int on) { if (on) host_glow |= (uint64
 /* the screen: 240 x 240 RGB565, as the ST7789 gets it (gfx.c sends the bytes swapped) */
 static uint16_t fb[240 * 240];
 static void lcd_sync(void) {}
+static int lcd_idle(void) { return 1; }
 static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {
     uint32_t i, j;
@@ -129,6 +130,53 @@ static int blob_save(uint32_t i, const void *p, uint32_t n) { return i < NBLOB ?
 static int slot_load(uint32_t i, void *p, uint32_t n) { return i < NSLOT ? host_load(host_slot[i], SLOT_MAX, p, n) : -1; }
 static int slot_save(uint32_t i, const void *p, uint32_t n) { return i < NSLOT ? host_save(host_slot[i], SLOT_MAX, p, n, "slot", i) : -1; }
 
+/* raw flash, for modules that keep their own format in a region the store allows (firmware/lib/patchlog.h in a slot):
+ * the device's st_read / fl_erase4k / fl_write on a 1 MiB image of erased flash, refused outside FL_RANGE_OK as on the
+ * FM-1. DINGHY_FLASH=file keeps the image across runs (loaded at start, written at the end): a power cycle. Kept apart
+ * from the RAM settings / blobs / slots above: a module must not mix its raw region with slot_save on the same slot. */
+static uint8_t host_flash[1u << 20], host_flash_init, flash_ok = 1;
+static void host_flash_load(void)
+{
+    const char *fn = getenv("DINGHY_FLASH");
+    FILE *f;
+    if (host_flash_init) return;
+    host_flash_init = 1;
+    memset(host_flash, 0xFF, sizeof host_flash);
+    if (fn && (f = fopen(fn, "rb"))) { if (fread(host_flash, 1, sizeof host_flash, f) != sizeof host_flash) fprintf(stderr, "%s: short image, the rest erased\n", fn); fclose(f); }
+}
+static void host_flash_store(void)
+{
+    const char *fn = getenv("DINGHY_FLASH");
+    FILE *f;
+    if (!fn || !host_flash_init || !(f = fopen(fn, "wb"))) return;
+    fwrite(host_flash, 1, sizeof host_flash, f);
+    fclose(f);
+}
+static int st_read(uint32_t off, void *dst, uint32_t n)
+{
+    host_flash_load();
+    if (off >= sizeof host_flash || n > sizeof host_flash - off) return -1;
+    memcpy(dst, host_flash + off, n);
+    return 0;
+}
+static int fl_erase4k(uint32_t off, uint32_t *took_us)
+{
+    host_flash_load();
+    if (took_us) *took_us = 17000u;
+    off &= ~0xFFFu;
+    if (!FL_RANGE_OK(off, 0x1000u)) { fprintf(stderr, "%6u ms  flash: erase of %05X refused (FL_RANGE_OK)\n", fm1_ms, off); return -1; }
+    memset(host_flash + off, 0xFF, 0x1000u);
+    return 0;
+}
+static int fl_write(uint32_t off, const uint8_t *src, uint32_t n)
+{
+    uint32_t i;
+    host_flash_load();
+    if (!FL_RANGE_OK(off, n)) { fprintf(stderr, "%6u ms  flash: write of %05X+%u refused (FL_RANGE_OK)\n", fm1_ms, off, n); return -1; }
+    for (i = 0; i < n; i++) host_flash[off + i] &= src[i];     /* NOR: programming only clears bits */
+    return 0;
+}
+
 static uint8_t mq[64][4];                       /* status, data 1, data 2, source (1 USB, 2 TRS) */
 static uint32_t mq_w, mq_r;
 static int midi_get(uint8_t *st, uint8_t *d1, uint8_t *d2)
@@ -148,12 +196,14 @@ static void app_main(void);
  * argument) replaces it, a line each: "T keys MASK" (hex or decimal), "T btn ID", "T midi ST D1 D2" (USB),
  * "T trs ST D1 D2" (the TRS jack), "T clock BPM N" (N MIDI clocks at BPM over USB, from T on), "T enc ID N" (encoder
  * ID turned N detents, + = clockwise), "T btndown ID" / "T btnup ID" (a button held, let go), "T end" */
-typedef struct { uint32_t t, keys; int btn; uint8_t st, d1, d2; int8_t enc, encn; uint8_t smk, sa; uint16_t sb; uint8_t src; } host_ev_t;
+typedef struct { uint32_t t, keys; int btn; uint8_t st, d1, d2; int8_t enc, encn; uint8_t smk, sa; uint16_t sb; uint8_t src; int32_t pv; char name[24]; } host_ev_t;
 /* SMK-37 builds (BOARD_SMK37) also: "T vel V" (the velocity of the keys pressed from now), "T pad P V" (hardware pad
  * P hit at velocity V, V 0 = let go), "T fader F V" (0..127), "T wheel W RAW" (0 pitch, 1 mod; raw ADC 0..1023),
  * "T xkey K V" (keybed key K 0..36 at V, 0 = let go: the outer keys 0..4, 32..36); any build: "T shot" (the screen
  * at T -> OUT-T.ppm) */
-enum { HS_NONE, HS_VEL, HS_PAD, HS_FADER, HS_WHEEL, HS_XKEY, HS_SHOT };
+enum { HS_NONE, HS_VEL, HS_PAD, HS_FADER, HS_WHEEL, HS_XKEY, HS_SHOT, HS_PARAM };
+/* any build, too: "T shot NAME" (-> OUT-NAME.ppm), "T param ID V" (the app's parameter ID set to V: calls HOST_PARAM(id, v),
+ * a macro the app defines before including platform.c; the knob and menu path skipped, for engine tests) */
 static const host_ev_t SCRIPT0[] = {
     {200, 1u << 7, -1, 0, 0, 0, -1, 0},                         /* C4 */
     {700, 1u << 7 | 1u << 11 | 1u << 14, -1, 0, 0, 0, -1, 0},   /* + E4 G4: a chord */
@@ -192,7 +242,11 @@ static void read_script(const char *path)
         else if (!strcmp(what, "fader")) { sscanf(line, "%*u %*s %u %u", &a, &b); e.smk = HS_FADER; e.sa = (uint8_t)a; e.sb = (uint16_t)b; }
         else if (!strcmp(what, "wheel")) { sscanf(line, "%*u %*s %u %u", &a, &b); e.smk = HS_WHEEL; e.sa = (uint8_t)a; e.sb = (uint16_t)b; }
         else if (!strcmp(what, "xkey")) { sscanf(line, "%*u %*s %u %u", &a, &b); e.smk = HS_XKEY; e.sa = (uint8_t)a; e.sb = (uint16_t)b; }
-        else if (!strcmp(what, "shot")) e.smk = HS_SHOT;   /* (any board: the screen now -> OUT-<ms>.ppm) */
+        else if (!strcmp(what, "shot")) {       /* (any board: the screen now -> OUT-<ms>.ppm, or OUT-NAME.ppm) */
+            e.smk = HS_SHOT;
+            if (sscanf(line, "%*u %*s %23s", e.name) != 1) e.name[0] = 0;
+        }
+        else if (!strcmp(what, "param")) { sscanf(line, "%*u %*s %u %i", &a, (int *)&b); e.smk = HS_PARAM; e.sa = (uint8_t)a; e.pv = (int32_t)b; }
         else if (!strcmp(what, "midi") || !strcmp(what, "trs")) {
             sscanf(line, "%*u %*s %i %u %u", (int *)&a, &b, &c);
             e.st = (uint8_t)a; e.d1 = (uint8_t)b; e.d2 = (uint8_t)c; e.src = what[0] == 't' ? 2 : 1;
@@ -293,7 +347,18 @@ static void platform_poll(void)                 /* one call = one millisecond */
 #endif
     while (step < script_n && script[step].t <= fm1_ms) {
         if (script[step].smk == HS_SHOT) {
-            write_ppm(fm1_ms);
+            if (script[step].name[0]) {
+                char nm[512];
+                snprintf(nm, sizeof nm, "%s-%s.ppm", host_out, script[step].name);
+                write_ppm_as(nm);
+                printf("%6u ms  screen -> %s\n", fm1_ms, nm);
+            } else write_ppm(fm1_ms);
+        } else if (script[step].smk == HS_PARAM) {
+#ifdef HOST_PARAM
+            HOST_PARAM((int)script[step].sa, script[step].pv);
+#else
+            fprintf(stderr, "script: param without HOST_PARAM in the app, ignored\n");
+#endif
         } else if (script[step].smk) {
 #if BOARD_SMK37
             static uint32_t vel = 100;
@@ -371,6 +436,7 @@ static void platform_poll(void)                 /* one call = one millisecond */
     } else if (shot < sizeof SHOT / sizeof SHOT[0] && fm1_ms == SHOT[shot])
         write_ppm(SHOT[shot++]);
     if (fm1_ms >= end_ms) {
+        host_flash_store();
         write_wav();
         perf_report();
         exit(0);

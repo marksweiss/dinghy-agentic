@@ -19,6 +19,7 @@ macOS (or with JIELI_DOCKER=1) each tool runs in a linux/amd64 container.
 """
 import argparse
 import hashlib
+import json
 import os
 import platform
 import re
@@ -63,6 +64,33 @@ SCREEN_NAME = "DINGHY"              # the update loader's screen (FM-1, ldr_scre
 SCREEN_COLOUR = 0xB47F              # lilac, #B48CFF
 PRODUCT = "FM-1_990"                # Dinghy: 99N (OUR_LOADER in the installer wants FM-1_9NN). Your fork: pick your own
 VERSION = None                      # APP_VER for release builds
+APP = "dinghy"                      # the app built: dinghy (firmware/src/dinghy.c) or a POC in apps/<name>/ (APP env or --app)
+APP_SRC = FW / "src" / "dinghy.c"
+APP_DEFS = []                       # -DAPP_NAME=... and the app's include path (apps/<name>/app.json)
+
+
+def load_app(name):
+    """apps/<name>/<name>.c and apps/<name>/app.json: {"name": "SHOWN NAME", "identity": "FM-1_9NN", "data_family": "X",
+    "colour": "#B48CFF"}. The identity is the app's own, the same for every release (the FM-1 Firmware Hub wants one
+    number no other firmware uses: check https://thefirmwarehub.com/catalog.json)."""
+    global APP, APP_SRC, PRODUCT, DATA_FAMILY, SCREEN_NAME, SCREEN_COLOUR
+    d = SRC / "apps" / name
+    src, meta = d / f"{name}.c", d / "app.json"
+    if not src.exists() or not meta.exists():
+        raise SystemExit(f"--app {name}: needs apps/{name}/{name}.c and apps/{name}/app.json")
+    cfg = json.loads(meta.read_text())
+    ident = cfg.get("identity", "")
+    if not re.fullmatch(r"FM-1_\d{3,9}", ident) or ident in ("FM-1_015", "FM-1_016"):
+        raise SystemExit(f"apps/{name}/app.json: identity {ident!r}: FM-1_ and 3-9 digits, not the official firmware's")
+    shown = cfg.get("name", name.upper())
+    if not re.fullmatch(r"[A-Z0-9 +\-]{1,12}", shown):
+        raise SystemExit(f"apps/{name}/app.json: name {shown!r}: 1-12 of A-Z 0-9 space + - (the rescue and crash screens)")
+    APP, APP_SRC, PRODUCT, SCREEN_NAME = name, src, ident, shown
+    DATA_FAMILY = cfg.get("data_family", re.sub(r"[^A-Z0-9]", "", shown)[:7] or "APP")
+    if "colour" in cfg:
+        r, g, b = (int(cfg["colour"].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
+        SCREEN_COLOUR = (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
+    APP_DEFS.extend([f'-DAPP_NAME="{shown}"', f"-I{d}"])
 
 
 def toolchain():
@@ -166,8 +194,8 @@ def build_loader():
 # ---- app
 
 def build_app():
-    flags = [*CFLAGS, *BOARD_DEFS[BOARD], "-Ifirmware/hal", "-Ifirmware/src", "-Ifirmware/gen", f'-DFELUCCA_ID="{PRODUCT}"',
-             f'-DAPP_VER="{VERSION or "0.0"}"']
+    flags = [*CFLAGS, *BOARD_DEFS[BOARD], "-Ifirmware/hal", "-Ifirmware/src", "-Ifirmware/gen", "-Ifirmware/lib",
+             f'-DFELUCCA_ID="{PRODUCT}"', f'-DAPP_VER="{VERSION or "0.0"}"', *APP_DEFS]
     if BOARD == "smk37":
         if not re.fullmatch(r"[A-Z0-9]{1,7}", DATA_FAMILY):
             raise SystemExit("DATA_FAMILY: 1..7 of A-Z 0-9")
@@ -176,9 +204,9 @@ def build_app():
     cmds = [("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
             ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
             ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
-            ("cc", *flags, "-c", FW / "src" / "dinghy.c", "-o", OUT / "dinghy.o")]
+            ("cc", *flags, "-c", APP_SRC, "-o", OUT / f"{APP}.o")]
     tc_all(*cmds)
-    elf = OUT / "dinghy.elf"
+    elf = OUT / f"{APP}.elf"
     ld = FW / "app.ld"
     if APP_SLOT != 0x8DFBC:          # another board's app slot (SMK-37): the same script, its XIP length
         txt = ld.read_text()
@@ -187,7 +215,7 @@ def build_app():
         ld = OUT / "app.ld"
         ld.write_text(txt.replace("LENGTH = 0x8DFBC", f"LENGTH = {APP_SLOT:#X}".replace("0X", "0x")))
     tc("pi32v2/bin/ld", "--gc-sections", "-e", "_start", "-T", ld, OUT / "crt0.o", OUT / "fm1_vec.o",
-       OUT / "fm1_isr.o", OUT / "dinghy.o", "-o", elf)
+       OUT / "fm1_isr.o", OUT / f"{APP}.o", "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin"):
         (OUT / sect).unlink(missing_ok=True)
     *_, syms, dis, rt = tc_all(("common/bin/objcopy", "-O", "binary", "-j", ".text", elf, OUT / "text.bin"),
@@ -196,7 +224,7 @@ def build_app():
                                ("common/bin/objdump", "-t", elf),
                                ("common/bin/objdump", "-d", elf),
                                ("common/bin/objdump", "-d", "-j", ".ram_text", elf))
-    (OUT / "dinghy.dis").write_text(dis)
+    (OUT / f"{APP}.dis").write_text(dis)
 
     def symv(name):
         return int(re.search(r"^([0-9a-f]+) .*\s" + name + r"$", syms, re.M).group(1), 16)
@@ -213,7 +241,7 @@ def build_app():
             img += b"\xff" * (load - APP_XIP - len(img))
             img += blob
     img += b"\xff" * (-len(img) % 4)
-    (OUT / "dinghy.bin").write_bytes(img)
+    (OUT / f"{APP}.bin").write_bytes(img)
     return bytes(img), syms, dis, rt
 
 
@@ -281,9 +309,10 @@ def mmio_check():
             break
         regs |= more
     errors = []
-    for f in sorted([*(FW / "src").glob("*.[ch]"), *(FW / "loader").glob("*.c")]):
+    for f in sorted([*(FW / "src").glob("*.[ch]"), *(FW / "loader").glob("*.c"), *(FW / "lib").glob("*.[ch]"),
+                     *(SRC / "apps").glob("*/*.[ch]")]):
         for no, ln in enumerate(strip(f.read_text()).splitlines(), 1):
-            where = f"{f.relative_to(FW)}:{no}"
+            where = f"{f.relative_to(SRC)}:{no}"
             for rx, what in ((MMIO_LIT, "register/window address"), (MMIO_CAST, "volatile pointer cast"),
                              (MMIO_ASM, "inline asm")):
                 m = rx.search(ln)
@@ -304,7 +333,11 @@ def main():
     ap.add_argument("--model", choices=sorted(MODELS), default=None,
                     help="smk37: the model name, pro (default), elite or mke (default: $MODEL, else pro)")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
+    ap.add_argument("--app", default=None, help="the app: dinghy (default) or a POC in apps/<name>/ (default: $APP)")
     a = ap.parse_args()
+    app = a.app or os.environ.get("APP") or "dinghy"
+    if app != "dinghy":
+        load_app(app)
     BOARD = (a.board or os.environ.get("BOARD") or "fm1").lower().replace("-", "")
     if BOARD not in BOARD_PREFIX:
         raise SystemExit(f"BOARD={BOARD}: use fm1 or smk37")
@@ -318,15 +351,19 @@ def main():
         BOARD_DEFS[BOARD] = [*BOARD_DEFS[BOARD], f'-DSMK_MODEL="{MODELS[model]}"']
         BOARD_PREFIX[BOARD] = BOARD_PREFIX[BOARD].replace(MODELS["pro"], MODELS[model])
         suffix += "-" + model
-    PRODUCT = BOARD_PREFIX[BOARD] + "0"
-    name = f"dinghy{suffix}.fwsc"
+    if APP == "dinghy":
+        PRODUCT = BOARD_PREFIX[BOARD] + "0"
+    elif BOARD != "fm1":
+        PRODUCT = BOARD_PREFIX[BOARD] + "0"       # (an app's own identity is an FM-1 one; another board keeps Dinghy's scheme)
+    name = f"{APP}{suffix}.fwsc"
     if a.release:                   # one digit each: the identity has room for two (X.Y; a .Z only in the text)
         m = re.fullmatch(r"(\d)\.(\d)(\.\d)?(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z or X.Y-suffix, one digit each")
-        PRODUCT = BOARD_PREFIX[BOARD] + m[2]
+        if APP == "dinghy" or BOARD != "fm1":
+            PRODUCT = BOARD_PREFIX[BOARD] + m[2]  # (an app keeps app.json's identity for every release)
         VERSION = m[1] + "." + m[2] + (m[3] or "")
-        name = f"dinghy-{a.release}{suffix}.fwsc"
+        name = f"{APP}-{a.release}{suffix}.fwsc"
     fm1pkg_make.SDK = a.sdk
     for rel, sha in SDK_SHA256.items():          # fail early without the SDK
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:
@@ -347,7 +384,7 @@ def main():
         raise SystemExit("build: checks failed")
     pkg = fm1pkg_make.ufw(fm1pkg_make.flash_image(img, fm1pkg_make.KEY), ota, PRODUCT)
     (OUT / name).write_bytes(pkg)
-    print(f"app      {OUT / 'dinghy.bin'}  {len(img)} B")
+    print(f"app      {OUT / (APP + '.bin')}  {len(img)} B")
     print(f"loader   {LDR / 'ota.bin'}  {len(ota)} B")
     print(f"package  {OUT / name}  {len(pkg)} B, identity {PRODUCT}" + (f", board {BOARD}" if BOARD != "fm1" else ""))
     return 0

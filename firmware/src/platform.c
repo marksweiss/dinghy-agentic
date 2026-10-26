@@ -397,6 +397,9 @@ static void platform_poll(void)
     int32_t a;
     fm1_wdt_feed();
     usb_retry(fm1_ms);
+#ifdef APP_SERVICE
+    APP_SERVICE();                              /* the app's own USB SysEx frames (firmware/lib/link.h); the updater's are left for ota_service */
+#endif
     ota_service();
     if (usb.ota_req) {
         usb.ota_req = 0;
@@ -414,7 +417,8 @@ static void platform_poll(void)
     }
     if (fm1_ms >= 30000u && bootguard.pending)
         bootguard_clear(&bootguard);            /* 30 s up: this firmware boots */
-    if ((a = fm1_adc_read(FM1_ADC_MASTER)) >= 0) {
+    if (lcd_idle() && (a = fm1_adc_read(FM1_ADC_MASTER)) >= 0) {   /* not while the screen's SPI DMA runs: it disturbs the
+                                                                     reading, and master_q12 scales every sample (TastyWaves) */
         uint32_t k10;
         knob_avg += (a * 16 - knob_avg) / 8;
         k10 = (uint32_t)(knob_avg / 16);
