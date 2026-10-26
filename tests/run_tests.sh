@@ -63,6 +63,7 @@ done
 [ "$found" = 1 ] || echo "(no SMK-37 packages in build/: BOARD=smk37 sh build.sh first)"
 
 run "installer (tools/fm1_install.py): FM-1 and SMK-37, install and the update-mode resume check the model" python3 tests/install_test.py
+run "firmware/lib modules (dsp, fx, arpseq, patchlog, link) and apps/kitchensink (all of them in one app, a power cycle)" sh tests/run_lib.sh
 
 [ "$fail" = 0 ] && echo "ALL TESTS PASSED" || echo "SOME TESTS FAILED"
 exit "$fail"

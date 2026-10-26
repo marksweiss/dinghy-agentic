@@ -12,7 +12,11 @@ typedef struct {               /* proportional, see tools/gen_font.py */
     const uint16_t *off;       /* byte offset of each glyph */
     const uint8_t *data;
 } felucca_font_t;
+#ifdef FONTS_SPLEEN                 /* Spleen 8x16 / 12x24 / 16x32 with FONT_M (TastyWaves; firmware/lib/uikit.h wants it) */
+#include "spleen_font.h"
+#else
 #include "felucca_font.h"
+#endif
 
 #ifndef CV_MAX
 #define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */

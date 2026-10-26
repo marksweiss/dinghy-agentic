@@ -1,0 +1,26 @@
+# apps/kitchensink, run 1 (tests/run_lib.sh): a chord; FX page: slot 1 to DELAY (knob 1 +4); hold FX: bypass; HOME: cutoff
+# 90 -> 60; SAVE; hold ARP: on; ARP page, a chord arpeggiated; hold HOME: help. Buttons: FX 2, HOME 8, SAVE 9, ARP 10.
+100 keys 0x91
+600 keys 0
+700 btn 2
+800 enc 2 4
+900 shot fx
+1000 keys 0x1
+1300 keys 0
+1500 btndown 2
+2100 btnup 2
+2200 shot bypass
+2300 btn 8
+2400 enc 2 -30
+2500 btn 9
+2700 shot saved
+2800 btndown 10
+3400 btnup 10
+3500 btn 10
+3600 keys 0x91
+4600 keys 0
+4700 shot arp
+5000 btndown 8
+5800 btnup 8
+5900 shot help
+6500 end

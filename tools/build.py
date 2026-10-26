@@ -375,7 +375,7 @@ def main():
     hal_err = mmio_check()
     errors += hal_err
     if not hal_err:
-        notes.append("register access: hal/ only (src/, loader/ clean)")
+        notes.append("register access: hal/ only (src/, lib/, apps/, loader/ clean)")
     for n in notes:
         print("  ok   ", n)
     for e in errors:

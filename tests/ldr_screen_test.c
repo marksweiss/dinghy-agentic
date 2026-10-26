@@ -17,6 +17,7 @@ static void fm1_lcd_hw_init(void) {}
 static void fm1_lcd_baud(uint32_t b) { (void)b; }
 static void fm1_lcd_backlight(uint32_t on) { (void)on; }
 static void fm1_lcd_deselect(void) {}
+static int fm1_lcd_done(void) { return 1; }      /* (lcd.c: lcd_idle) */
 static void fm1_lcd_send_cmd(uint8_t c)
 {
     cmd = c;

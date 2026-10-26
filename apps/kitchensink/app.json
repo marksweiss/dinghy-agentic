@@ -1,0 +1,7 @@
+{
+  "name": "KITCHENSINK",
+  "identity": "FM-1_998",
+  "data_family": "KSINK",
+  "colour": "#B48CFF",
+  "about": "Demo of every firmware/lib module; not for release (FM-1_998 is a placeholder: a real app picks a free identity)."
+}

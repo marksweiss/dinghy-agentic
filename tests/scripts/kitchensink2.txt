@@ -1,0 +1,3 @@
+# apps/kitchensink, run 2 on run 1's flash (a power cycle): patch 1 loads at boot with cutoff 60
+500 shot boot
+1000 end

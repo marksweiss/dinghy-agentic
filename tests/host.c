@@ -32,6 +32,8 @@
 #define HALF_FRAMES 256u
 
 static volatile uint32_t fm1_ms;
+#define FM1_TICKS_PER_US 24u
+static uint32_t fm1_ticks(void) { return fm1_ms * 24000u; }   /* (coarse: the host's audio takes no device time; CPU meters read 0) */
 #if BOARD_SMK37
 /* the SMK-37 (hal/smk_input.h's API): keys with velocity, pads as events, 4 faders, 2 wheels, the outer keys, the
  * pad LEDs; 8 encoders (K1 = MASTER) */
@@ -199,6 +201,21 @@ static int midi_get(uint8_t *st, uint8_t *d1, uint8_t *d2)
     return src;
 }
 static void midi_send(uint32_t st, uint32_t d1, uint32_t d2) { printf("%6u ms  MIDI out %02X %u %u\n", fm1_ms, st, d1, d2); }
+
+/* the updater's SysEx layer (ota.c), as firmware/lib/link.h uses it: no frame ever arrives on the host (the link's
+ * protocol is tested on its own: tests/lib_link_check.c); a reply is logged */
+#ifndef FELUCCA_ID
+#define FELUCCA_ID "FM-1_990"
+#endif
+static uint8_t ota_dec[600];
+static uint32_t ota_rd16(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8; }
+static uint32_t ota_pack7(const uint8_t *in, uint32_t n, uint8_t *out)
+{ uint32_t acc = 0, nb = 0, o = 0; while (n--) { acc |= (uint32_t)*in++ << nb; nb += 8u; while (nb >= 7u) { out[o++] = (uint8_t)(acc & 0x7Fu); acc >>= 7; nb -= 7u; } } if (nb) out[o++] = (uint8_t)(acc & 0x7Fu); return o; }
+static uint32_t ota_unpack7(const uint8_t *in, uint32_t n, uint8_t *out, uint32_t max)
+{ uint32_t acc = 0, nb = 0, o = 0; while (n--) { acc |= (uint32_t)(*in++ & 0x7Fu) << nb; nb += 7u; if (nb >= 8u) { if (o < max) out[o] = (uint8_t)acc; o++; acc >>= 8; nb -= 8u; } } return o; }
+static int ota_frame_get(const uint8_t **p, uint32_t *n) { (void)p; (void)n; return 0; }
+static void ota_frame_done(void) {}
+static int ota_wire_send(const uint8_t *p, uint32_t n) { (void)p; printf("%6u ms  SysEx out (%u B)\n", fm1_ms, n); return 0; }
 
 static void app_audio(int32_t *out, uint32_t n);
 static void app_main(void);
