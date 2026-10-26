@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 """Send MIDI clock (24 per quarter note) to the FM-1, to try the arp's external clock without a DAW.
-   .venv/bin/python tools/send_clock.py [BPM] [seconds]     (default 120 BPM, 10 s; Ctrl-C stops)
+   tools/send_clock.py [BPM] [seconds]     (default 120 BPM, 10 s; Ctrl-C stops; it runs itself in the repo's .venv)
 The synth shows up as the MIDI port "Felucca" (the USB name of the platform it is built on)."""
-import sys, time
-import mido
+import os, sys, time
+try:
+    import mido
+except ImportError:                             # started with a Python without mido: run again in the repo's venv
+    venv = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.venv', 'bin', 'python')
+    if os.path.exists(venv) and os.path.realpath(sys.executable) != os.path.realpath(venv):
+        os.execv(venv, [venv] + sys.argv)
+    sys.exit('send_clock.py needs mido and python-rtmidi: tools/install.sh (or: uv pip install mido python-rtmidi)')
 
 bpm = float(sys.argv[1]) if len(sys.argv) > 1 else 120.0
 secs = float(sys.argv[2]) if len(sys.argv) > 2 else 10.0
