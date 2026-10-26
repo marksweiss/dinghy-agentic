@@ -13,6 +13,8 @@ for t in dsp fx arpseq patchlog link; do
     echo "== lib/$t"
     build/host/lib_${t}_check | tail -1 | grep -q "passed\|0 failures" || { build/host/lib_${t}_check | grep FAIL; fail=1; }
 done
+$CC -o build/host/lib_link_serve tests/lib_link_serve.c
+if command -v node >/dev/null; then echo "== tools/web/link.js against link.h"; node tests/web_link_check.mjs | tail -1 | grep -q passed || { node tests/web_link_check.mjs | grep FAIL; fail=1; }; else echo "(no node: tools/web/link.js not checked)"; fi
 echo "== apps/kitchensink"
 F=build/host/kitchensink.flash; rm -f "$F"
 APP=kitchensink DINGHY_FLASH=$F sh tests/run_host.sh tests/scripts/kitchensink.txt > build/host/ks1.log
