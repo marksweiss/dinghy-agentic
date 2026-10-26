@@ -12,6 +12,8 @@ the repository first. The Python ones use `.venv/` (made by `install.sh`).
 | `build.py` | The build (`../build.sh` runs it, in a `linux/amd64` Docker container on macOS): app, update loader, `.fwsc`, and the checks. `APP=name` / `--app name` builds `apps/name/`; `--release X.Y.Z` a release; `--board smk37` the SMK-37 |
 | `fm1pkg_make.py`, `lz4blk.py` | Package the app and the loader into a `.fwsc` (Felucca's format); used by `build.py` |
 | `install_fw.sh` | Installs a `.fwsc` on the connected FM-1 (default `build/$APP.fwsc`); `--info` shows what runs on it |
+| `new_app.sh NAME "Title"` | A new POC in `apps/NAME` from kitchensink |
+| `graduate.sh NAME [DEST]` | A finished app into its own repository (history kept, trimmed to it and its modules, it the default build; skill `graduate-app`) |
 | `fm1_install.py` | The installer behind it (Felucca's USB update protocol); exit codes in its header |
 
 ## Host mode, pictures, clock
@@ -37,6 +39,8 @@ the repository first. The Python ones use `.venv/` (made by `install.sh`).
 https://tastysynth.com/tool/).
 
 ## Making a release
+
+A firmware you want listed and shared graduates first (`tools/graduate.sh`), then follows this checklist in its own repository.
 
 ### The identity
 

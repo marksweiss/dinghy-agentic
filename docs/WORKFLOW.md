@@ -57,4 +57,6 @@ Steps that need judgment are marked for an expert (synth-dsp, panel-ui) instead 
 6. **Device test** -> `APP=<poc> ./build.sh`, the user installs (`tools/install_fw.sh build/<poc>.fwsc` or the web tool) and
    works through the new test plan section.
 7. **Feedback** -> each reported row becomes a fix and a re-test row. Commit per feature.
-8. When the user wants to share it: `release-engineer` (tools/README.md: identity, release, web tool, the hub).
+8. When the user is happy with it and wants it to be its own firmware: graduate it (`tools/graduate.sh <name>`, skill
+   `graduate-app`): its own repository with the toolkit's history, the modules it uses, the app as the default build. Then
+   `release-engineer` (tools/README.md: identity, release, web tool, the hub). Fixes to modules flow back to the toolkit.

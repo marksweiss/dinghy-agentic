@@ -18,9 +18,9 @@ target.
 | | |
 | --- | --- |
 | **A coordinator and 12 agents** | `CLAUDE.md` makes the main Claude Code session the coordinator (use Opus); `.claude/agents` has the spec writer (Opus), plan writer (Sonnet), implementer (Haiku), the experts for DSP, panel, platform and FM1 Open, a test writer, a build verifier, a rules reviewer, a researcher and a release engineer |
-| **16 skills** | `.claude/skills`: spec and plan templates, starting a POC, the modules, fixed-point DSP, host mode, the screen and panel conventions, storage, device test plans, builds, crashes, installs and releases, the browser tool and GitHub Pages, the Firmware Hub, FM1 Open |
+| **17 skills** | `.claude/skills`: spec and plan templates, starting a POC, the modules, fixed-point DSP, host mode, the screen and panel conventions, storage, device test plans, builds, crashes, installs and releases, the browser tool and GitHub Pages, the Firmware Hub, FM1 Open, graduating an app into its own repository |
 | **Synth modules** | `firmware/lib`: voices (pitch, oscillators, ADSR, state-variable filter, LFO, glide, voice stealing), a 4-slot effects chain, an arpeggiator and two chord sequencers, a power-cut-safe patch store, a USB link to the browser, a UI kit, a splash animation. Integer-only, each with a host test ([docs/MODULES.md](docs/MODULES.md)) |
-| **Many POCs, one repo** | `apps/<name>/`, built with `APP=<name> ./build.sh`; `tools/new_app.sh` starts one from `apps/kitchensink`, a small synth that uses every module |
+| **Many POCs, one repo** | `apps/<name>/`, built with `APP=<name> ./build.sh`; `tools/new_app.sh` starts one from `apps/kitchensink`, a small synth that uses every module; `tools/graduate.sh` turns a finished one into its own repository (as TastyWaves was) |
 | **Host mode** | Every app runs on your computer: scripted keys and knobs, the screen as PNG, the sound as WAV, saves across simulated power cycles. Most bugs die before the FM-1 sees them |
 | **Install from the browser** | `tools/web`: the Install button (Felucca's installer), patch backup and restore, ready for GitHub Pages |
 | **Two targets** | Dinghy (fully open, your own engine, builds on Linux or macOS with Docker) and FM1 Open (M-VAVE's engines, samples, Bluetooth; Windows build) ([targets/fm1open](targets/fm1open/README.md)) |

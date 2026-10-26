@@ -5,7 +5,7 @@ FM-1 can carry, adapted to its 240 x 240 screen, 27 keys, 14 buttons and 7 encod
 (docs/WORKFLOW.md), one device-testable milestone at a time. This is a roadmap, not a spec: each milestone below becomes
 `specs/<app>-mN.md` and `plans/<app>-mN.md` when it starts.
 
-**Working name:** `pocketlab` (placeholder; see Open questions). The app re-creates the OP-1's *ideas and workflow*, not its
+**Name:** **TastyToy** (`apps/tastytoy`). The app re-creates the OP-1's *ideas and workflow*, not its
 look: no Teenage Engineering artwork, names, logos or sounds; its own graphics in the FM-1's style. "OP-1" is TE's
 trademark and appears only in docs as the inspiration.
 
@@ -129,7 +129,7 @@ the same thing everywhere, and every page says what holds do.
 
 ## 4. Architecture
 
-- One app `apps/pocketlab/`, split into headers by subsystem (the same one-translation-unit style): `engines/` (one header
+- One app `apps/tastytoy/`, split into headers by subsystem (the same one-translation-unit style): `engines/` (one header
   each: fm4, cluster, digital, pulse, phase, string, drwave, sampler, dbox, behind one engine interface: `init(params)`,
   `note_on/off`, `render(voice, buf, n)`, a per-voice cost), `modmatrix.h`, `seqkinds.h` (endless, pattern, tombola,
   finger on arpseq.h's clock), `tape.h` (event tape), `looper.h` (RAM audio), `mixer.h` (levels, pans, EQ, drive),
@@ -166,7 +166,7 @@ a device test plan section the user runs, and is committed separately. Estimates
 | M10 | **Mixer** | levels, pans, EQ, master fx, drive + release, the signal path screen, tape tricks incl. memo | mixer.h | CPU (EQ + compressor on the master) |
 | M11 | **RAM looper + resampling** | a few seconds of real audio: record the output, overdub, reverse, speed, drop it into the sampler | looper.h | pool memory shared with fx |
 | M12 | **COM + web tool** | controller mode (CC knobs), and the browser: backup / restore sounds, kits, patterns, tapes, samples | link.h commands, tools/web | link bandwidth for samples |
-| M13 | **Polish + release** | performance pass, animations, factory sounds and kits, identity, hub listing | release-engineer | — |
+| M13 | **Polish + release** | performance pass, animations, factory sounds and kits; graduate it into its own repository (`tools/graduate.sh tastytoy`), identity, release, hub listing | graduate-app, release-engineer | — |
 
 Suggested order: M0 -> M1 -> M2 -> M3 -> M7 (sequencers early: they are what makes it fun) -> M8 -> M6 -> M4 -> M5 ->
 M9 -> M10 -> M11 -> M12 -> M13. M0-M3 alone already make a playable 4-engine synth with effects.
@@ -184,18 +184,20 @@ M9 -> M10 -> M11 -> M12 -> M13. M0-M3 alone already make a playable 4-engine syn
 
 Each milestone starts with one prompt to the coordinator (CLAUDE.md), e.g.:
 
-> M1 of plans/op1-roadmap.md: the pocketlab synth engines Digital, Pulse, Phase and FM, with 8 sound slots, engine swap and
+> M1 of plans/op1-roadmap.md: the tastytoy synth engines Digital, Pulse, Phase and FM, with 8 sound slots, engine swap and
 > save / recall / undo, on the M0 shell.
 
-The coordinator has the spec-writer turn the milestone into `specs/pocketlab-m1.md` (you approve it), the plan-writer
-into `plans/pocketlab-m1.md`, then builds it with the implementer and the experts, checks it in host mode, has it
+The coordinator has the spec-writer turn the milestone into `specs/tastytoy-m1.md` (you approve it), the plan-writer
+into `plans/tastytoy-m1.md`, then builds it with the implementer and the experts, checks it in host mode, has it
 reviewed and gives you the device test section. The milestone's research questions (e.g. FM algorithms in integer DSP, a
 cheap plate reverb) go to the researcher first.
 
-## 8. Open questions for you
+## 8. Decisions (2026-10-26)
 
-1. **Name** (the identity and splash follow): `pocketlab` is a placeholder.
-2. **SHIFT:** hold SEL as the modifier (recommended), or GLO?
-3. **Priorities:** the suggested order puts sequencers before the remaining engines; OK?
-4. **Target:** Dinghy (recommended), or a parallel FM1 Open experiment for real audio sampling later?
-5. **Scope of the tape:** the event tape (minutes of performance, no audio) plus a few-second RAM looper, as proposed?
+1. Name: **TastyToy** (`apps/tastytoy`; a free `FM-1_` identity before its first release).
+2. SHIFT: hold **SEL**.
+3. Order: the sequencers (M7) before the remaining engines, as suggested.
+4. Target: **Dinghy**.
+5. Tape: the **event tape** (4 tracks of performance) plus a few-second **RAM looper** for real audio.
+
+Next: M0 (the shell), started with the coordinator: "M0 of plans/op1-roadmap.md".

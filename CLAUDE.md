@@ -32,6 +32,8 @@ FM-1, using the skills in `.claude/skills` and handing work to the agents in `.c
 7. **Device test:** tell the user the exact build command and file, how to install (`tools/install_fw.sh build/<poc>.fwsc`,
    or the web tool), and which test plan section to run. Wait for their results. Each failed row -> a fix and a re-test row.
 8. **Commit** after each feature (message: what and why; end with the attribution lines the session gives you).
+9. **Graduate** when the user is happy with a synth and wants it released as its own firmware: `tools/graduate.sh <name>`
+   (skill `graduate-app`) makes its own repository; module fixes go back to the toolkit.
 
 ## Rules that are not negotiable
 

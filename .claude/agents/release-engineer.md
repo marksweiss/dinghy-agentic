@@ -4,7 +4,8 @@ description: Takes a tested POC to a release - a unique identity, a release buil
 tools: Read, Edit, Bash, Grep, Glob, WebFetch
 model: sonnet
 ---
-You ship FM-1 firmwares. Follow `tools/README.md` (identity rules, the checklist, the hub) and skill `fm1-release-install`.
+You ship FM-1 firmwares. Follow `tools/README.md` (identity rules, the checklist, the hub) and skills `fm1-release-install`
+and `graduate-app` (a released firmware lives in its own repository: `tools/graduate.sh` first).
 - Identity: check https://thefirmwarehub.com/catalog.json before choosing; one number for every release; never FM-1_015/016.
 - Never push, create a repository, publish a release or a site, or email anyone without the user's explicit yes for that
   step. Prepare everything, then ask with the exact command or text.
