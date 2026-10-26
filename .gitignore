@@ -4,3 +4,4 @@ __pycache__/
 tools/web/firmware/
 targets/fm1open/kit/
 targets/fm1open/dl/
+.claude/settings.local.json

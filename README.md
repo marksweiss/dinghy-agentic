@@ -1,138 +1,72 @@
-<p align="center"><img src="assets/logo.svg" width="96" alt="Dinghy"></p>
+# dinghy-agentic
 
-# Dinghy
+**Describe a synth. Play it on your FM-1.**
 
-**The smallest firmware for the M-VAVE FM-1 to build your own on.**
+dinghy-agentic is a toolkit for building synthesizer firmwares for the M-VAVE FM-1 with Claude Code. You describe the
+instrument you want in a few sentences; a coordinator agent turns it into a spec, a plan and a working proof of concept,
+handing the work to specialist agents (spec, plan, implementation, DSP, panel, platform, tests, review, release). You
+install the result on your own FM-1, play it, and tell it what to change.
 
-Dinghy plays a sine wave on the keys, and that is all it does. Under it is everything an FM-1 firmware needs
-before it can be any fun: the update path, the USB rescue, MIDI over USB and the TRS jack (with clock), USB audio, the
-keys, knobs and LEDs, the screen, flash storage, and the same again for the M-Vave SMK-37. It all works, so you start
-with the part you actually want to write.
-
-```
-firmware/src/dinghy.c     <- your firmware: ~300 lines, a 4-voice sine. Start here.
-firmware/src/platform.c   <- the plumbing (boot, USB, MIDI, updates, audio ISR, storage). Done; read it, don't fight it.
-firmware/src/store.h      <- where your data lives in flash, per board
-firmware/src/*.c, hal/    <- Felucca's platform, as SLOOP / sloopDX / OberVave carry it; the SMK-37 layer
-```
-
-Dinghy is based on [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita (Hügelton Instruments), with its
-platform as [SLOOP](https://github.com/isod89/sloop-fm1) (isod89) carries it: it keeps that platform and throws away the
-rest. The smallest boat of the family, after the felucca and the sloop.
-
-<p align="center"><img src="docs/screen.png" width="240" alt="Dinghy's screen: the name, the note played, a keyboard with the keys that sound"></p>
-
-> **Status: 0.4.** 0.3 was tested on the FM-1: the install, MIDI in (pitch exact, 4 voices), USB audio at
-> 44.1 / 48 kHz, the keys, the screen, the octave kept in flash, and back to another firmware through the hub.
-> 0.4 brings OberVave's platform over: the TRS MIDI IN, the clock, blobs and slots, the loader's screen, the SMK-37.
-> That code runs on the device in OberVave (FM-1 and SMK-37); Dinghy 0.4 itself is tested on the host only so far.
+It is a fork of [Dinghy](https://github.com/zvenson/dinghy) (the smallest FM-1 firmware to build on, by zvenson, on
+[Felucca](https://github.com/hugelton/Felucca) and [SLOOP](https://github.com/isod89/sloop-fm1)), with everything learned
+building [TastyWaves](https://github.com/marksweiss/tastywaves) (a released 12-voice wavetable synth) turned into reusable
+modules, tools, agents and skills, and M-VAVE's official [FM1 Open](https://github.com/m-vave/fm1_open) kit as a second
+target.
 
 ## What you get
 
 | | |
 | --- | --- |
-| **Updates that always work** | `tools/fm1_install.py`, the web installers and the [FM-1 Firmware Hub](https://thefirmwarehub.com) reach your firmware over USB, so you (and your users) can always install the next build, or go back to the official firmware. |
-| **USB rescue** | Hold **OCT-** while switching on: no sound, only the updater. If your firmware crashes twice at boot, the FM-1 goes there by itself. |
-| **MIDI** | USB in and out (class compliant) and the FM-1's TRS MIDI IN, in one queue: `midi_get()` says where a message came from, `midi_send()`. Clock, start, stop and continue reach your app. |
-| **USB audio** | The FM-1 shows up as a 16-bit stereo audio input (44.1 or 48 kHz): record it into any DAW or phone. Nothing to do. |
-| **Panel** | 27 keys, 14 buttons, 7 encoders, the MASTER knob, the LEDs, by name (`BTN_PLAY`, `ENC_KNOB1`, ...). |
-| **Screen** | 240 x 240, text in two sizes, rectangles, lines, pixels. |
-| **Storage** | `settings_*` (4 KB), 8 blobs of 4 KB (`blob_*`), 8 slots of 16 KB (`slot_*`), each with a CRC, in places no other part of the flash is in reach of. |
-| **Never waits for the screen** | `LCD_IDLE`: your app reads MIDI and the keys while the screen's DMA runs, so a chord never stumbles over a redraw. |
-| **The SMK-37 too** | `./build.sh --board smk37` (Pro, Elite, MKE-P37): the same app on M-Vave's 37-key keyboard, with velocity, outer keys, 16 coloured pads, faders and wheels. [docs/SMK37.md](docs/SMK37.md) |
-| **An update screen** | The update loader draws your name in your colour, a progress bar and what to do, also after an install was cut off (FM-1). |
-| **A crash screen** | A fault shows where it happened (the PC), then the FM-1 restarts. |
-| **Host mode** | The same `dinghy.c` on your computer: the screen as an image, the sound as a WAV, scripted keys, knobs, MIDI (USB and TRS, a clock), SMK-37 pads and wheels. No FM-1 needed to try an idea. |
-| **Tests and CI** | `tests/run_tests.sh`: the host app, the flash maps, the update path, the loader, the installer. A tag `vX.Y` on GitHub builds, tests and releases the packages with a build attestation. |
-| **Checks** | The build fails on what bricks or breaks an FM-1 firmware: a 64-bit division, a call into the chip ROM, too much RAM, a register touched outside `hal/`. |
+| **A coordinator and 12 agents** | `CLAUDE.md` makes the main Claude Code session the coordinator (use Opus); `.claude/agents` has the spec writer (Opus), plan writer (Sonnet), implementer (Haiku), the experts for DSP, panel, platform and FM1 Open, a test writer, a build verifier, a rules reviewer, a researcher and a release engineer |
+| **16 skills** | `.claude/skills`: spec and plan templates, starting a POC, the modules, fixed-point DSP, host mode, the screen and panel conventions, storage, device test plans, builds, crashes, installs and releases, the browser tool and GitHub Pages, the Firmware Hub, FM1 Open |
+| **Synth modules** | `firmware/lib`: voices (pitch, oscillators, ADSR, state-variable filter, LFO, glide, voice stealing), a 4-slot effects chain, an arpeggiator and two chord sequencers, a power-cut-safe patch store, a USB link to the browser, a UI kit, a splash animation. Integer-only, each with a host test ([docs/MODULES.md](docs/MODULES.md)) |
+| **Many POCs, one repo** | `apps/<name>/`, built with `APP=<name> ./build.sh`; `tools/new_app.sh` starts one from `apps/kitchensink`, a small synth that uses every module |
+| **Host mode** | Every app runs on your computer: scripted keys and knobs, the screen as PNG, the sound as WAV, saves across simulated power cycles. Most bugs die before the FM-1 sees them |
+| **Install from the browser** | `tools/web`: the Install button (Felucca's installer), patch backup and restore, ready for GitHub Pages |
+| **Two targets** | Dinghy (fully open, your own engine, builds on Linux or macOS with Docker) and FM1 Open (M-VAVE's engines, samples, Bluetooth; Windows build) ([targets/fm1open](targets/fm1open/README.md)) |
+| **The platform, intact** | Dinghy 0.4 underneath: updates that always work, the USB rescue, USB-MIDI and TRS MIDI in, USB audio, the SMK-37, the build's safety checks, the test suite |
 
-## Build your own
+## Quick start
 
-From nothing to your own firmware on the FM-1, step by step. Each step works before you go to the next.
-
-### 1. Copy it
-
-On GitHub: **Use this template** (top right on this page) or fork it, then clone your copy. Rename nothing yet:
-first make sure the unchanged Dinghy builds on your machine.
-
-### 2. Set up once
-
-You need Linux on x86-64 (or macOS / Windows with Docker or WSL), Python 3 with Pillow, the JieLi toolchain
-and three files of the JieLi AC79 SDK:
+You need an M-VAVE FM-1 and a USB cable; Linux on x86-64, or macOS / Windows with Docker; Python 3; [uv](https://docs.astral.sh/uv/);
+[Claude Code](https://claude.com/claude-code).
 
 ```sh
-pip3 install Pillow mido python-rtmidi
-tools/get_toolchain.sh                      # JieLi's clang for the chip, to ~/.jieli/toolchain
-git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 \
-    https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK
+git clone https://github.com/marksweiss/dinghy-agentic.git && cd dinghy-agentic
+tools/install.sh            # once: venv, JieLi toolchain, the AC79 SDK files; then a build and the host tests
+claude                      # in this directory; /model opus
 ```
 
-On macOS the build runs the toolchain in a `linux/amd64` Docker container by itself (have Docker running).
-`JIELI_TOOLCHAIN` and `AC79_SDK` point elsewhere if your copies live somewhere else.
+Then tell it what you want, for example:
 
-### 3. Hear it without an FM-1
+> A four-voice paraphonic drone synth: two oscillators per voice slowly detuning against each other, a resonant
+> low-pass that the mod wheel sweeps, a long reverb. The keys latch notes on and off.
+
+The coordinator asks what it needs to know, writes `specs/<name>.md` for you to approve, plans it, builds it, checks it
+in host mode, has it reviewed, and gives you the file to install and a short test plan to try on the FM-1. Report back
+by row number ("2.3: the reverb tail clicks") and it fixes and asks you to retest. See [docs/WORKFLOW.md](docs/WORKFLOW.md).
+
+By hand, without the agents:
 
 ```sh
-tests/run_host.sh                           # -> build/host/dinghy.wav and screen PNGs
+tools/new_app.sh drone "Drone"                    # apps/drone from kitchensink
+APP=drone sh tests/run_host.sh apps/drone/tests/smoke.txt
+APP=drone ./build.sh                              # build/drone.fwsc
+tools/install_fw.sh build/drone.fwsc              # onto the FM-1 (asks first)
 ```
 
-Host mode runs the same `dinghy.c` on your computer: the sound as a WAV, the screen as images. Most ideas can be
-tried here first, in seconds.
+## Documentation
 
-### 4. Your first change
+- [CLAUDE.md](CLAUDE.md): the coordinator's playbook. [docs/WORKFLOW.md](docs/WORKFLOW.md): the loop and the roles.
+- [docs/LESSONS.md](docs/LESSONS.md): what building TastyWaves taught (the chip, the panel, testing, shipping).
+- [docs/MODULES.md](docs/MODULES.md): firmware/lib. [targets/fm1open/README.md](targets/fm1open/README.md): the second target.
+- [tools/README.md](tools/README.md): the tools, identities, the release checklist, the Firmware Hub.
+- [docs/DINGHY.md](docs/DINGHY.md), [docs/API.md](docs/API.md), [docs/RULES.md](docs/RULES.md): the platform underneath.
 
-Open [firmware/src/dinghy.c](firmware/src/dinghy.c) (~200 lines). The sound is `app_audio()`: it gets an empty
-buffer of stereo frames and adds to it. Make the sine a square:
+## Credits and licence
 
-```c
-s = ((int32_t)ph < 0 ? 8000 : -8000) * amp >> 15;     /* instead of s = (sine(ph) * amp) >> 15; */
-```
-
-Run `tests/run_host.sh` again and listen to `build/host/dinghy.wav`. The screen is drawn in `app_main()`, the keys
-are read there too: change the text, add a knob ([docs/API.md](docs/API.md) has every call).
-
-### 5. Onto the FM-1
-
-```sh
-./build.sh                                       # -> build/dinghy.fwsc (fails on what would brick the FM-1)
-python3 tools/fm1_install.py build/dinghy.fwsc   # over USB; asks before it writes, restarts into your build
-python3 tools/fm1_install.py --info              # what runs on the connected FM-1
-```
-
-That is the whole loop: change, hear it on the host, build, install. Back to another firmware, or to the official
-one, with the [FM-1 Firmware Hub](https://thefirmwarehub.com) in Chrome or Edge: Dinghy (and every copy of it)
-answers the hub's updater like every firmware there. Installing firmware is at your own risk.
-
-### 6. When it goes wrong
-
-- **It crashes:** the screen shows where (the PC), then the FM-1 restarts. Twice at boot and it goes to the
-  USB rescue by itself.
-- **It won't start at all:** hold **OCT-** while switching on: the USB rescue, no sound, only the updater. Install
-  a working build (or another firmware from the hub) from there.
-- **The build refuses:** it checks for a 64-bit division, a call into the chip ROM, too much RAM, a register touched
-  outside `hal/`. [docs/RULES.md](docs/RULES.md) says why each one matters; read it before your first crash.
-
-### 7. Make it yours, release it, get into the hub
-
-Your name and logo, your own package identity (so the FM-1 and the installers tell your firmware from Dinghy),
-a GitHub release with the `.fwsc`, and how to get listed next to the others in the
-[FM-1 Firmware Hub](https://thefirmwarehub.com): **[docs/MAKE-IT-YOURS.md](docs/MAKE-IT-YOURS.md)**.
-
-## Where to go next
-
-- **[docs/API.md](docs/API.md)**: everything `platform.c` gives you, with the panel's ids, the screen calls, the
-  audio contract, MIDI, storage, the flash map, timing, the SMK-37.
-- **[docs/SMK37.md](docs/SMK37.md)**: building and installing for the M-Vave SMK-37.
-- **[docs/MAKE-IT-YOURS.md](docs/MAKE-IT-YOURS.md)**: turn Dinghy into your firmware: the name, the package
-  identity, releases, getting into the FM-1 Firmware Hub.
-- **[docs/RULES.md](docs/RULES.md)**: the chip's rules (no FPU, no libgcc, the audio ISR's budget) and what the build
-  checks for you. Read it before your first crash, not after.
-
-## License
-
-GPL-3.0-only, as Felucca and SLOOP: you may change and share it, and whoever gets your firmware gets its source.
-Details, credits and third-party parts in [LICENSING.md](LICENSING.md).
-
-The platform is Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments, with SLOOP's changes (isod89);
-the SMK-37 layer by M. Geisler (genkigenki); the loader's screen after Skiff (illuminus5). Dinghy (the app, the host
-mode, the docs) by zvenson.
+GPL-3.0-only ([LICENSE](LICENSE), [LICENSING.md](LICENSING.md) for who made which part). Built on Dinghy by zvenson,
+Felucca by Leo Kuroshita (Hügelton Instruments), SLOOP by isod89, and the people Dinghy credits; modules, tools, agents and
+skills by Mark Weiss ([@marksweiss](https://github.com/marksweiss)) with Claude (Anthropic), from TastyWaves. M-VAVE's FM1 Open
+kit is fetched separately under M-VAVE's own terms and is not part of this repository. "M-VAVE" and "FM-1" belong to their
+owners; dinghy-agentic is not made or endorsed by them.

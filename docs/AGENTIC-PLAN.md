@@ -33,17 +33,17 @@ which they may license as they like). The FM1 Open kit is fetched by script, not
 ## Phases
 
 1. [x] Repo: main fast-forwarded to upstream 0.4; branch `agentic`.
-2. [ ] Platform hooks on 0.4: APP_SERVICE (a USB SysEx link beside the updater), ADC read not during LCD DMA,
+2. [x] Platform hooks on 0.4: APP_SERVICE (a USB SysEx link beside the updater), ADC read not during LCD DMA,
        host raw-flash emulation (st_read / fl_erase4k / fl_write on a RAM image, DINGHY_FLASH=file persists it),
        host `param ID V` command (HOST_PARAM hook), cv_px on host.
-3. [ ] Multi-app build: APP=name / --app for build.py, run_host.sh, run_tests.sh; app.json; identity per app.
-4. [ ] Modules (firmware/lib): dsp.h, fx.h, arpseq.h, patchlog.h, link.h (+ patch commands), uikit.h, splash.h;
+3. [x] Multi-app build: APP=name / --app for build.py, run_host.sh, run_tests.sh; app.json; identity per app.
+4. [x] Modules (firmware/lib): dsp.h, fx.h, arpseq.h, patchlog.h, link.h (+ patch commands), uikit.h, splash.h;
        a host test each; apps/kitchensink uses them all (host + device build).
-5. [ ] Tools: install_fw.sh, install.sh, web installer page (tools/web), web_release.sh, shots.py, send_clock.py,
+5. [x] Tools: install_fw.sh, install.sh, web installer page (tools/web), web_release.sh, shots.py, send_clock.py,
        tools/README.md (release process, identities, hub submission).
-6. [ ] FM1 Open target: targets/fm1open (fetch script pinned to a release + SHA-256, build notes: Windows / VM,
+6. [x] FM1 Open target: targets/fm1open (fetch script pinned to a release + SHA-256, build notes: Windows / VM,
        app structure, API, licence, flashing and coexistence with Dinghy firmwares).
-7. [ ] .claude: CLAUDE.md (coordinator), agents, skills (from TastyWaves' lessons).
-8. [ ] Docs: README (what it is, the workflow, quick start), LICENSING (credits: Felucca, SLOOP, Dinghy, TastyWaves,
+7. [x] .claude: CLAUDE.md (coordinator), agents, skills (from TastyWaves' lessons).
+8. [x] Docs: README (what it is, the workflow, quick start), LICENSING (credits: Felucca, SLOOP, Dinghy, TastyWaves,
        M-VAVE for the fetched kit), WORKFLOW, LESSONS, MODULES, TARGETS.
 9. [ ] Publish: archive branch, rename repo, push, check.

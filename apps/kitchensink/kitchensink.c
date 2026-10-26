@@ -107,6 +107,8 @@ static int quiet(void)
 /* ---- patches: the parameters in the patch log; the link serves them to a computer */
 #include "patchlog.h"
 #define LINK_PATCHES 1
+#define LINK_ID1 'D'                            /* the link's two letters: app.json "link_id" (the web tool talks to these) */
+#define LINK_ID2 'A'
 #define LINK_QUIET() (quiet() && fm1_in.notes == 0u)
 #include "link.h"
 #include "uikit.h"
