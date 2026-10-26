@@ -2,3 +2,5 @@ build/
 __pycache__/
 .DS_Store
 tools/web/firmware/
+targets/fm1open/kit/
+targets/fm1open/dl/
