@@ -23,6 +23,8 @@
  * The clock: arp_run(frames) once per audio block, after your event drain. Internal at arp_cfg.bpm; external MIDI clock:
  * the main loop counts 0xF8 into arp_ext.ticks and 0xFA (start) into arp_ext.start; after 0.5 s without ticks the
  * internal clock takes over. arp_tap / sq_tap: what plays now, for the screen and the step LEDs.
+ * arp_tap.beat_blocks counts a beat in 5.8 ms audio blocks: fine for timing, +-1 BPM on a screen (99 / 100 flicker);
+ * to show a clock's tempo, measure the 0xF8s in ms over 4 beats in the main loop (apps/kitchensink does).
  *
  * Who writes what:
  *   arp_cfg.*, arp_cfg2.*  one writer: the ISR copying your parameters once per block (or the main loop, if it is the

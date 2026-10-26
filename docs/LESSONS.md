@@ -54,6 +54,7 @@ here are built on these. Each line is something that cost time once.
   `btnup` for holds. A test tone must keep its phase across helpers, or a delay line shows a jump that is not there.
 - Feedback loops in integer DSP: round toward zero (`>> n` of a negative number never reaches 0: a limit cycle). Test that
   every effect falls silent after the input stops.
+- Measure a displayed tempo in ms over several beats, not in audio blocks: a 5.8 ms grid makes 100 BPM read 99 / 100.
 - Browsers cache scripts: serve the web tool with `Cache-Control: no-store` (`tools/web_serve.py`).
 - macOS: the system Python has no Pillow (use `.venv`); headless Chrome will not go below ~500 px wide.
 - A review of the whole diff before a release found real bugs both times (a MIDI start not resetting one lane's beat; a
