@@ -3,7 +3,11 @@
 # AC79 SDK. Idempotent. Then a build and the host tests. Needs uv (https://docs.astral.sh/uv/), git, and on macOS Docker.
 set -e
 cd "$(dirname "$0")/.."
-[ -d .venv ] || uv venv
+PYV=$(cat .python-version)                   # 3.12: python-rtmidi has no prebuilt wheel for newer Pythons on macOS
+if [ -x .venv/bin/python ] && ! .venv/bin/python -c "import sys; sys.exit(sys.version_info[:2] != tuple(map(int, '$PYV'.split('.'))))"; then
+    echo "install.sh: .venv is not Python $PYV: making it again"; rm -rf .venv
+fi
+[ -d .venv ] || uv venv --python "$PYV"
 uv pip install --python .venv/bin/python Pillow mido python-rtmidi numpy
 [ -x "$HOME/.jieli/toolchain/pi32v2/bin/clang" ] || tools/get_toolchain.sh
 [ -f "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot" ] || \
